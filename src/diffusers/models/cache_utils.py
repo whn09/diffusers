@@ -173,12 +173,16 @@ class CacheMixin:
         HookRegistry.check_if_exists_or_initialize(self).reset_stateful_hooks(recurse=recurse)
 
     @contextmanager
-    def cache_context(self, name: str):
-        r"""Context manager that provides additional methods for cache management."""
+    def cache_context(self, name: str, **kwargs):
+        r"""Context manager that provides information for cache management.
+
+        `name` is the name of the denoising call, usually `"cond"` or `"uncond"`. The keyword arguments provide additional information about the call, 
+        # such as the current `timestep`, or `sigma`, e.g.`cache_context("cond", step=i, sigma=sigma)`.
+        """
         from ..hooks import HookRegistry
 
         registry = HookRegistry.check_if_exists_or_initialize(self)
-        registry._set_context(name)
+        registry._set_context(name, info=kwargs or None)
 
         try:
             yield

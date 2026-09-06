@@ -173,6 +173,7 @@ class HookRegistry:
         self._module_ref = module_ref
         self._hook_order = []
         self._fn_refs = []
+        self._context_info: dict = {}
 
     def register_hook(self, hook: ModelHook, name: str) -> None:
         if name in self.hooks.keys():
@@ -267,14 +268,23 @@ class HookRegistry:
             module._diffusers_hook = cls(module)
         return module._diffusers_hook
 
-    def _set_context(self, name: str | None = None) -> None:
+    def _set_context(self, name: str | None = None, info: dict | None = None) -> None:
+        # Information the caller attaches to this context (e.g. the denoising loop's current
+        # timestep, sigma, etc.), readable by hooks via `context_info`. Cleared when the context is.
+        self._context_info = dict(info) if info else {}
+
         for hook_name in reversed(self._hook_order):
             hook = self.hooks[hook_name]
             if hook._is_stateful:
                 hook._set_context(self._module_ref, name)
 
         for registry in self._get_child_registries():
-            registry._set_context(name)
+            registry._set_context(name, info)
+
+    @property
+    def context_info(self) -> dict:
+        """Information attached to the current context by the caller; `{}` when none was provided."""
+        return self._context_info
 
     def _get_child_registries(self) -> list["HookRegistry"]:
         """Return registries of child modules, using a cached list when available.
